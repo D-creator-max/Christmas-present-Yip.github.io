@@ -1,193 +1,179 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-}
-body {
-  font-family: Arial, sans-serif;
-  margin: 20px;
+// Select elements
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+const startButton = document.getElementById("startButton");
+const instructions = document.getElementById("instructions");
+
+canvas.width = 800;
+canvas.height = 400;
+
+let player, goal, obstacles, collectibles;
+let gameActive = false;
+let keys = {};
+let score = 0;
+
+const messages = [
+    "Avoid the chaos!",
+    "Listen to the still small voice!",
+    "Trust in the guidance.",
+    "Keep moving forward.",
+    "You're almost there!",
+];
+
+// Game object class
+class GameObject {
+    constructor(x, y, width, height, color) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+    }
+
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
 }
 
-header {
-  text-align: center;
-  background-color: #f2f2f2;
-  padding: 20px;
+// Reset game
+function resetGame() {
+    player = new GameObject(50, canvas.height - 60, 40, 40, "blue");
+    goal = new GameObject(canvas.width - 100, canvas.height - 60, 50, 50, "gold");
+
+    obstacles = Array.from({ length: 5 }, () => {
+        return new GameObject(
+            Math.random() * canvas.width,
+            Math.random() * (canvas.height - 100),
+            30,
+            30,
+            "red"
+        );
+    });
+
+    collectibles = Array.from({ length: 5 }, () => {
+        return new GameObject(
+            Math.random() * canvas.width,
+            Math.random() * (canvas.height - 100),
+            20,
+            20,
+            "green"
+        );
+    });
+
+    score = 0;
+    instructions.innerText = "Navigate through chaos to reach the still small voice!";
 }
 
-main {
-  margin-top: 20px;
+// Draw all objects
+function drawGameObjects() {
+    player.draw();
+    goal.draw();
+    obstacles.forEach((obj) => obj.draw());
+    collectibles.forEach((obj) => obj.draw());
 }
 
-section {
-  margin-bottom: 20px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+// Update player position
+function updatePlayer() {
+    if (keys["ArrowUp"] && player.y > 0) player.y -= 5;
+    if (keys["ArrowDown"] && player.y + player.height < canvas.height) player.y += 5;
+    if (keys["ArrowLeft"] && player.x > 0) player.x -= 5;
+    if (keys["ArrowRight"] && player.x + player.width < canvas.width) player.x += 5;
 }
 
-h2 {
-  color: #333;
+// Check collisions
+function checkCollisions() {
+    // Check collision with obstacles
+    for (let obstacle of obstacles) {
+        if (
+            player.x < obstacle.x + obstacle.width &&
+            player.x + player.width > obstacle.x &&
+            player.y < obstacle.y + obstacle.height &&
+            player.y + player.height > obstacle.y
+        ) {
+            gameActive = false;
+            alert("You hit the chaos! Game Over.");
+            resetGame();
+            return;
+        }
+    }
+
+    // Check collision with collectibles
+    collectibles = collectibles.filter((collectible) => {
+        if (
+            player.x < collectible.x + collectible.width &&
+            player.x + player.width > collectible.x &&
+            player.y < collectible.y + collectible.height &&
+            player.y + player.height > collectible.y
+        ) {
+            score += 1;
+            instructions.innerText =
+                messages[Math.floor(Math.random() * messages.length)];
+            return false;
+        }
+        return true;
+    });
+
+    // Check collision with goal
+    if (
+        player.x < goal.x + goal.width &&
+        player.x + player.width > goal.x &&
+        player.y < goal.y + goal.height &&
+        player.y + player.height > goal.y
+    ) {
+        gameActive = false;
+        alert(`You reached the still small voice! Your score: ${score}`);
+        resetGame();
+    }
 }
 
-p {
-  line-height: 1.5;
+// Game loop
+function gameLoop() {
+    if (!gameActive) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawGameObjects();
+    updatePlayer();
+    checkCollisions();
+    requestAnimationFrame(gameLoop);
 }
 
-footer {
-  text-align: center;
-  padding: 10px;
-  background-color: #f2f2f2;
-}
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f4f4f9;
-}
+// Start button click event
+startButton.addEventListener("click", () => {
+    startButton.style.display = "none";
+    canvas.style.display = "block";
+    gameActive = true;
+    resetGame();
+    gameLoop();
+});
 
-#game-container {
-  width: 90%;
-  max-width: 600px;
-  background: #ffffff;
-  padding: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  border-radius: 10px;
-}
+// Keyboard controls
+window.addEventListener("keydown", (e) => (keys[e.key] = true));
+window.addEventListener("keyup", (e) => (keys[e.key] = false));
 
-h1 {
-  margin-bottom: 20px;
-  color: #333;
-}
+// Touch controls (for mobile)
+let touchStartX, touchStartY;
 
-#category {
-  font-size: 16px;
-  font-weight: bold;
-  color: #555;
-}
+canvas.addEventListener("touchstart", (e) => {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+});
 
-#question {
-  font-size: 18px;
-  margin-bottom: 20px;
-}
+canvas.addEventListener("touchmove", (e) => {
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
 
-#answers button {
-  display: block;
-  margin: 10px auto;
-  padding: 10px 20px;
-  font-size: 16px;
-  background: #007BFF;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
+    if (dx > 10) keys["ArrowRight"] = true;
+    if (dx < -10) keys["ArrowLeft"] = true;
+    if (dy > 10) keys["ArrowDown"] = true;
+    if (dy < -10) keys["ArrowUp"] = true;
+});
 
-#answers button:hover {
-  background: #0056b3;
-}
+canvas.addEventListener("touchend", () => {
+    keys = {};
+});
 
-#score-container {
-  margin-top: 20px;
-}
-
-#feedback {
-  font-size: 16px;
-}
-
-#next-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-#next-button:hover {
-  background: #218838;
-}
-
-
-
-body {
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background-color: #f4f4f9;
-}
-
-#game-container {
-  width: 90%;
-  max-width: 600px;
-  background: #ffffff;
-  padding: 20px;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  text-align: center;
-  border-radius: 10px;
-}
-
-h1 {
-  margin-bottom: 20px;
-  color: #333;
-}
-
-#category {
-  font-size: 16px;
-  font-weight: bold;
-  color: #555;
-}
-
-#question {
-  font-size: 18px;
-  margin-bottom: 20px;
-}
-
-#answers button {
-  display: block;
-  margin: 10px auto;
-  padding: 10px 20px;
-  font-size: 16px;
-  background: #007BFF;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-#answers button:hover {
-  background: #0056b3;
-}
-
-#score-container {
-  margin-top: 20px;
-}
-
-#feedback {
-  font-size: 16px;
-}
-
-#next-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-#next-button:hover {
-  background: #218838;
-}
+// Initialize game
+resetGame();
